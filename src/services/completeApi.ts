@@ -10,7 +10,7 @@ const getHeaders = () => {
   return headers;
 };
 
-export const securityApi = {
+const securityApi = {
   // MFA APIs
   async enableMFA(userId: number, method: 'sms' | 'email', contact: string) {
     const response = await fetch(`${API_BASE_URL}/mfa.php`, {
@@ -115,7 +115,7 @@ export const securityApi = {
   }
 };
 
-export const messagingApi = {
+const messagingApi = {
   // Enhanced Messaging APIs
   async sendMessage(receiverId: number, productId: number, message: string) {
     const response = await fetch(`${API_BASE_URL}/messaging.php`, {
@@ -157,7 +157,7 @@ export const messagingApi = {
   }
 };
 
-export const biometricApi = {
+const biometricApi = {
   async registerChallenge(userId: number) {
     const response = await fetch(`${API_BASE_URL}/biometric.php`, {
       method: 'POST',

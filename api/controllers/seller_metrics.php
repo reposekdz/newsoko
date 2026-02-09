@@ -16,7 +16,7 @@ $database = new Database();
 $db = $database->getConnection();
 $auth = new Auth($db);
 
-$user = \$auth->requireAuth();
+$user = $auth->requireAuth();
 if (!$user) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);

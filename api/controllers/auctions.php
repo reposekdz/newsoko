@@ -4,7 +4,7 @@ header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json");
 
-require_once '../config/database.php');
+require_once '../config/database.php';
 require_once '../middleware/Auth.php';
 
 $database = new Database();
@@ -88,7 +88,7 @@ try {
                 
             } elseif (isset($_GET['my_auctions'])) {
                 // Get user's auctions (as seller)
-                $user = \$auth->requireAuth();
+                $user = $auth->requireAuth();
                 if (!$user) {
                     throw new Exception('Authentication required');
                 }
@@ -114,7 +114,7 @@ try {
                 
             } elseif (isset($_GET['my_bids'])) {
                 // Get user's bids
-                $user = \$auth->requireAuth();
+                $user = $auth->requireAuth();
                 if (!$user) {
                     throw new Exception('Authentication required');
                 }
@@ -149,7 +149,7 @@ try {
             
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
-            $user = \$auth->requireAuth();
+            $user = $auth->requireAuth();
             
             if (!$user) {
                 throw new Exception('Authentication required');

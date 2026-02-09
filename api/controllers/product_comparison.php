@@ -45,7 +45,7 @@ if ($method === 'GET') {
     }
     
     // Get user's saved comparisons
-    $user = \$auth->requireAuth();
+    $user = $auth->requireAuth();
     if ($user) {
         $stmt = $db->prepare("SELECT * FROM product_comparisons WHERE user_id = :user_id ORDER BY created_at DESC LIMIT 10");
         $stmt->bindParam(':user_id', $user['id']);
@@ -59,7 +59,7 @@ if ($method === 'GET') {
 
 // POST - Save comparison
 if ($method === 'POST') {
-    $user = \$auth->requireAuth();
+    $user = $auth->requireAuth();
     if (!$user) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Unauthorized']);

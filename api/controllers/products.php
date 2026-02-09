@@ -130,8 +130,12 @@ switch($method) {
             $maxPrice = $_GET['max_price'] ?? null;
             $condition = $_GET['condition'] ?? null;
             $location = $_GET['location'] ?? null;
+            // Rwanda location filters
+            $provinceId = $_GET['province_id'] ?? null;
+            $districtId = $_GET['district_id'] ?? null;
+            $sectorId = $_GET['sector_id'] ?? null;
             
-            $results = $product->getAll($category, $search, $limit, $sort, $minPrice, $maxPrice, $condition, $location);
+            $results = $product->getAll($category, $search, $limit, $sort, $minPrice, $maxPrice, $condition, $location, $provinceId, $districtId, $sectorId);
             
             // Get attributes and variants for each product
             $attrStmt = $db->prepare("SELECT * FROM product_attributes WHERE product_id = ?");
@@ -181,15 +185,66 @@ switch($method) {
         $data = json_decode(file_get_contents("php://input"), true);
         $data['owner_id'] = $user['id'];
         
+        // Validate required fields
+        if (empty($data['title']) || empty($data['description'])) {
+            echo json_encode(['success' => false, 'message' => 'Title and description are required']);
+            break;
+        }
+        
+        // Validate Rwanda location if provided
+        $provinceId = null;
+        $districtId = null;
+        $sectorId = null;
+        $address = $data['address'] ?? '';
+        
+        if (isset($data['province_id']) && $data['province_id']) {
+            $provinceId = (int)$data['province_id'];
+        }
+        if (isset($data['district_id']) && $data['district_id']) {
+            $districtId = (int)$data['district_id'];
+        }
+        if (isset($data['sector_id']) && $data['sector_id']) {
+            $sectorId = (int)$data['sector_id'];
+        }
+        
+        // Build location string from IDs
+        $locationString = '';
+        if ($provinceId && $districtId && $sectorId) {
+            try {
+                $stmt = $db->prepare("SELECT name FROM rwanda_provinces WHERE id = :id");
+                $stmt->bindParam(':id', $provinceId);
+                $stmt->execute();
+                $provinceName = $stmt->fetchColumn() ?: '';
+                
+                $stmt = $db->prepare("SELECT name FROM rwanda_districts WHERE id = :id");
+                $stmt->bindParam(':id', $districtId);
+                $stmt->execute();
+                $districtName = $stmt->fetchColumn() ?: '';
+                
+                $stmt = $db->prepare("SELECT name FROM rwanda_sectors WHERE id = :id");
+                $stmt->bindParam(':id', $sectorId);
+                $stmt->execute();
+                $sectorName = $stmt->fetchColumn() ?: '';
+                
+                $locationString = trim("$sectorName, $districtName, $provinceName");
+                if (!$address) {
+                    $address = $locationString;
+                }
+            } catch (Exception $e) {
+                // Location lookup failed, continue without it
+            }
+        }
+        
         try {
             $db->beginTransaction();
             
-            // Create main product
+            // Create main product with Rwanda location fields
             $stmt = $db->prepare("INSERT INTO products 
                 (title, description, category_id, images, rent_price, buy_price, address, lat, lng,
                  owner_id, deposit, features, condition_status, sku, stock_quantity, weight, dimensions,
-                 brand, model, year_manufactured, warranty_period, tags, seo_title, seo_description)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                 brand, model, year_manufactured, warranty_period, tags, seo_title, seo_description,
+                 province_id, district_id, sector_id, location_string)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             
             $stmt->execute([
                 $data['title'],
@@ -198,7 +253,7 @@ switch($method) {
                 json_encode($data['images'] ?? []),
                 $data['rent_price'] ?? null,
                 $data['buy_price'] ?? null,
-                $data['address'],
+                $address,
                 $data['lat'] ?? null,
                 $data['lng'] ?? null,
                 $data['owner_id'],
@@ -215,7 +270,11 @@ switch($method) {
                 $data['warranty_period'] ?? null,
                 json_encode($data['tags'] ?? []),
                 $data['seo_title'] ?? $data['title'],
-                $data['seo_description'] ?? $data['description']
+                $data['seo_description'] ?? $data['description'],
+                $provinceId,
+                $districtId,
+                $sectorId,
+                $locationString
             ]);
             
             $productId = $db->lastInsertId();

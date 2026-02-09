@@ -13,7 +13,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 try {
     $auth = new Auth($db);
-    \$user = \$auth->requireAuth();
+    $user = $auth->requireAuth();
     
     switch($method) {
         case 'GET':

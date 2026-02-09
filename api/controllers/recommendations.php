@@ -23,7 +23,7 @@ try {
         case 'GET':
             if (isset($_GET['personalized'])) {
                 // Get personalized recommendations
-                $user = \$auth->requireAuth();
+                $user = $auth->requireAuth();
                 $user_id = $user ? $user['user_id'] : null;
                 $limit = $_GET['limit'] ?? 10;
                 
@@ -208,7 +208,7 @@ try {
             
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
-            $user = \$auth->requireAuth();
+            $user = $auth->requireAuth();
             
             if (!$user) {
                 throw new Exception('Authentication required');

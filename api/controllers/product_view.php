@@ -19,7 +19,7 @@ try {
         // Try to get authenticated user
         try {
             $auth = new Auth($db);
-            \$user = \$auth->requireAuth();
+            $user = $auth->requireAuth();
             $userId = $user['id'];
         } catch (Exception $e) {
             // Guest user
@@ -132,7 +132,7 @@ try {
         $action = $data['action'] ?? '';
         
         $auth = new Auth($db);
-        \$user = \$auth->requireAuth();
+        $user = $auth->requireAuth();
         
         switch($action) {
             case 'message_seller':

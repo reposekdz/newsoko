@@ -7,7 +7,7 @@ class Product {
         $this->conn = $db;
     }
 
-    public function getAll($category = null, $search = null, $limit = 50, $sort = 'newest', $minPrice = null, $maxPrice = null, $condition = null, $location = null) {
+    public function getAll($category = null, $search = null, $limit = 50, $sort = 'newest', $minPrice = null, $maxPrice = null, $condition = null, $location = null, $provinceId = null, $districtId = null, $sectorId = null) {
         $query = "SELECT p.*, u.name as owner_name, u.email as owner_email, u.phone as owner_phone, 
                   u.avatar as owner_avatar, u.is_verified as owner_verified, u.rating as owner_rating, 
                   u.review_count as owner_review_count, u.location as owner_location
@@ -16,7 +16,7 @@ class Product {
                   WHERE p.is_available = 1";
         
         if ($category) {
-            $query .= " AND p.category = :category";
+            $query .= " AND p.category_id = :category";
         }
         if ($search) {
             $query .= " AND (p.title LIKE :search OR p.description LIKE :search)";
@@ -32,6 +32,16 @@ class Product {
         }
         if ($location) {
             $query .= " AND p.address LIKE :location";
+        }
+        // Rwanda location filters
+        if ($provinceId) {
+            $query .= " AND p.province_id = :province_id";
+        }
+        if ($districtId) {
+            $query .= " AND p.district_id = :district_id";
+        }
+        if ($sectorId) {
+            $query .= " AND p.sector_id = :sector_id";
         }
         
         switch($sort) {
@@ -67,6 +77,9 @@ class Product {
             $locationTerm = "%{$location}%";
             $stmt->bindParam(':location', $locationTerm);
         }
+        if ($provinceId) $stmt->bindParam(':province_id', $provinceId, PDO::PARAM_INT);
+        if ($districtId) $stmt->bindParam(':district_id', $districtId, PDO::PARAM_INT);
+        if ($sectorId) $stmt->bindParam(':sector_id', $sectorId, PDO::PARAM_INT);
         $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
         
         $stmt->execute();

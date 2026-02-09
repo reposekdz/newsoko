@@ -1,184 +1,175 @@
--- Rwanda Location System - Complete Database Schema
+-- Complete Rwanda Locations Migration
+-- This SQL file adds all Rwanda administrative division support to the database
 
--- Provinces Table
-CREATE TABLE IF NOT EXISTS rwanda_provinces (
+-- Use the database
+USE rental_marketplace;
+
+-- ============================================
+-- USERS TABLE - Add Rwanda location fields
+-- ============================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS province_id INT NULL AFTER location;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS district_id INT NULL AFTER province_id;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sector_id INT NULL AFTER district_id;
+
+-- Add indexes for faster location queries
+CREATE INDEX IF NOT EXISTS idx_users_province ON users(province_id);
+CREATE INDEX IF NOT EXISTS idx_users_district ON users(district_id);
+CREATE INDEX IF NOT EXISTS idx_users_sector ON users(sector_id);
+
+-- Add missing columns for completeness
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active TINYINT(1) DEFAULT 1 AFTER is_verified;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason VARCHAR(500) NULL AFTER is_active;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login DATETIME NULL AFTER created_at;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status ENUM('active','suspended','banned') DEFAULT 'active' AFTER ban_reason;
+
+-- ============================================
+-- PRODUCTS TABLE - Add Rwanda location fields
+-- ============================================
+ALTER TABLE products ADD COLUMN IF NOT EXISTS province_id INT NULL AFTER seo_description;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS district_id INT NULL AFTER province_id;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sector_id INT NULL AFTER district_id;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS location_string VARCHAR(255) NULL AFTER sector_id;
+
+-- Add indexes for faster location queries
+CREATE INDEX IF NOT EXISTS idx_products_province ON products(province_id);
+CREATE INDEX IF NOT EXISTS idx_products_district ON products(district_id);
+CREATE INDEX IF NOT EXISTS idx_products_sector ON products(sector_id);
+
+-- Add missing columns for completeness
+ALTER TABLE products ADD COLUMN IF NOT EXISTS category_id INT NULL AFTER title;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS status ENUM('pending','approved','rejected','sold') DEFAULT 'pending' AFTER is_available;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS approved_at DATETIME NULL AFTER status;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS approved_by INT NULL AFTER approved_at;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(500) NULL AFTER approved_by;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS views INT DEFAULT 0 AFTER review_count;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS favorites INT DEFAULT 0 AFTER views;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS listing_type ENUM('rent','sale','both') DEFAULT 'both' AFTER condition_status;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_featured TINYINT(1) DEFAULT 0 AFTER listing_type;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_percentage DECIMAL(5,2) DEFAULT 0.00 AFTER is_featured;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sku VARCHAR(100) NULL AFTER condition_status;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity INT DEFAULT 0 AFTER sku;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS weight DECIMAL(10,3) NULL AFTER stock_quantity;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS dimensions VARCHAR(50) NULL AFTER weight;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(100) NULL AFTER dimensions;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS model VARCHAR(100) NULL AFTER brand;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS year_manufactured YEAR NULL AFTER model;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS warranty_period VARCHAR(50) NULL AFTER year_manufactured;
+
+-- ============================================
+-- BOOKINGS TABLE - Add missing fields
+-- ============================================
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_amount DECIMAL(10,2) NULL AFTER end_date;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS platform_fee DECIMAL(10,2) NULL AFTER total_amount;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount DECIMAL(10,2) NULL AFTER refund_status;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_reason VARCHAR(500) NULL AFTER refund_amount;
+
+-- ============================================
+-- REVIEWS TABLE - Add missing fields
+-- ============================================
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS product_id INT NOT NULL AFTER user_id;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS booking_id INT NULL AFTER product_id;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS response TEXT NULL AFTER comment;
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS response_at DATETIME NULL AFTER response;
+
+-- ============================================
+-- CREATE MISSING TABLES
+-- ============================================
+
+-- Categories table
+CREATE TABLE IF NOT EXISTS categories (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    code VARCHAR(10) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    parent_id INT NULL,
+    icon VARCHAR(100),
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Insert default categories if empty
+INSERT IGNORE INTO categories (id, name, slug, description, icon) VALUES
+(1, 'Vehicles', 'vehicles', 'Cars, motorcycles, bicycles, and other vehicles', '🚗'),
+(2, 'Electronics', 'electronics', 'Phones, laptops, cameras, and gadgets', '📱'),
+(3, 'Clothing', 'clothing', 'Clothes, shoes, and accessories', '👕'),
+(4, 'Houses', 'houses', 'Houses, apartments, and rooms for rent', '🏠'),
+(5, 'Furniture', 'furniture', 'Beds, sofas, tables, and home furniture', '🪑'),
+(6, 'Tools', 'tools', 'Power tools and construction equipment', '🔧'),
+(7, 'Others', 'others', 'Miscellaneous items', '📦');
+
+-- Admin logs table
+CREATE TABLE IF NOT EXISTS admin_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id INT NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_admin_logs_admin (admin_id),
+    INDEX idx_admin_logs_entity (entity_type, entity_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- System settings table
+CREATE TABLE IF NOT EXISTS system_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Insert default settings
+INSERT IGNORE INTO system_settings (setting_key, setting_value, description) VALUES
+('platform_fee_percentage', '5', 'Platform fee percentage for transactions'),
+('min_booking_days', '1', 'Minimum booking duration in days'),
+('max_booking_days', '30', 'Maximum booking duration in days'),
+(' escrow_enabled', '1', 'Enable escrow payment system');
+
+-- Roles table
+CREATE TABLE IF NOT EXISTS roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    description VARCHAR(255),
+    permissions TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Districts Table
-CREATE TABLE IF NOT EXISTS rwanda_districts (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    province_id INT NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    code VARCHAR(10) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (province_id) REFERENCES rwanda_provinces(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_district (province_id, name)
-);
+-- Insert default roles
+INSERT IGNORE INTO roles (id, name, display_name, description) VALUES
+(1, 'admin', 'Administrator', 'Full system access'),
+(2, 'seller', 'Seller', 'Can list and sell products'),
+(3, 'buyer', 'Buyer', 'Can purchase products'),
+(4, 'moderator', 'Moderator', 'Can moderate content');
 
--- Sectors Table
-CREATE TABLE IF NOT EXISTS rwanda_sectors (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    district_id INT NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    code VARCHAR(10),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (district_id) REFERENCES rwanda_districts(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_sector (district_id, name)
-);
+-- User roles junction table
+CREATE TABLE IF NOT EXISTS user_roles (
+    user_id INT NOT NULL,
+    role_id INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Update Users Table to include location
-ALTER TABLE users 
-ADD COLUMN IF NOT EXISTS province_id INT,
-ADD COLUMN IF NOT EXISTS district_id INT,
-ADD COLUMN IF NOT EXISTS sector_id INT,
-ADD FOREIGN KEY (province_id) REFERENCES rwanda_provinces(id),
-ADD FOREIGN KEY (district_id) REFERENCES rwanda_districts(id),
-ADD FOREIGN KEY (sector_id) REFERENCES rwanda_sectors(id);
+-- Assign admin role to first user (if exists)
+INSERT IGNORE INTO user_roles (user_id, role_id) SELECT id, 1 FROM users LIMIT 1;
 
--- Update Products Table to include location
-ALTER TABLE products 
-ADD COLUMN IF NOT EXISTS province_id INT,
-ADD COLUMN IF NOT EXISTS district_id INT,
-ADD COLUMN IF NOT EXISTS sector_id INT,
-ADD FOREIGN KEY (province_id) REFERENCES rwanda_provinces(id),
-ADD FOREIGN KEY (district_id) REFERENCES rwanda_districts(id),
-ADD FOREIGN KEY (sector_id) REFERENCES rwanda_sectors(id);
+-- ============================================
+-- UPDATE EXISTING DATA
+-- ============================================
 
--- Insert Provinces
-INSERT INTO rwanda_provinces (name, code) VALUES
-('Kigali City', 'KGL'),
-('Eastern Province', 'EST'),
-('Northern Province', 'NTH'),
-('Southern Province', 'STH'),
-('Western Province', 'WST');
+-- Update products to use category_id from category name
+UPDATE products p 
+LEFT JOIN categories c ON p.category = c.slug 
+SET p.category_id = c.id 
+WHERE p.category IS NOT NULL;
 
--- Insert Districts for Kigali City
-INSERT INTO rwanda_districts (province_id, name, code) VALUES
-(1, 'Gasabo', 'GSB'),
-(1, 'Kicukiro', 'KCK'),
-(1, 'Nyarugenge', 'NYR');
+-- Update status for existing products
+UPDATE products SET status = 'approved' WHERE status IS NULL OR status = '';
 
--- Insert Districts for Eastern Province
-INSERT INTO rwanda_districts (province_id, name, code) VALUES
-(2, 'Bugesera', 'BGS'),
-(2, 'Gatsibo', 'GTS'),
-(2, 'Kayonza', 'KYZ'),
-(2, 'Kirehe', 'KRH'),
-(2, 'Ngoma', 'NGM'),
-(2, 'Nyagatare', 'NYG'),
-(2, 'Rwamagana', 'RWM');
-
--- Insert Districts for Northern Province
-INSERT INTO rwanda_districts (province_id, name, code) VALUES
-(3, 'Burera', 'BRR'),
-(3, 'Gakenke', 'GKN'),
-(3, 'Gicumbi', 'GCM'),
-(3, 'Musanze', 'MSZ'),
-(3, 'Rulindo', 'RLD');
-
--- Insert Districts for Southern Province
-INSERT INTO rwanda_districts (province_id, name, code) VALUES
-(4, 'Gisagara', 'GSG'),
-(4, 'Huye', 'HYE'),
-(4, 'Kamonyi', 'KMN'),
-(4, 'Muhanga', 'MHG'),
-(4, 'Nyamagabe', 'NYM'),
-(4, 'Nyanza', 'NYZ'),
-(4, 'Nyaruguru', 'NYR'),
-(4, 'Ruhango', 'RHG');
-
--- Insert Districts for Western Province
-INSERT INTO rwanda_districts (province_id, name, code) VALUES
-(5, 'Karongi', 'KRG'),
-(5, 'Ngororero', 'NGR'),
-(5, 'Nyabihu', 'NYB'),
-(5, 'Nyamasheke', 'NYS'),
-(5, 'Rubavu', 'RBV'),
-(5, 'Rusizi', 'RSZ'),
-(5, 'Rutsiro', 'RTS');
-
--- Insert Sectors for Gasabo District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(1, 'Bumbogo'), (1, 'Gatsata'), (1, 'Gikomero'), (1, 'Gisozi'), (1, 'Jabana'),
-(1, 'Jali'), (1, 'Kacyiru'), (1, 'Kimihurura'), (1, 'Kimironko'), (1, 'Kinyinya'),
-(1, 'Ndera'), (1, 'Nduba'), (1, 'Remera'), (1, 'Rusororo'), (1, 'Rutunga');
-
--- Insert Sectors for Kicukiro District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(2, 'Gahanga'), (2, 'Gatenga'), (2, 'Gikondo'), (2, 'Kagarama'), (2, 'Kanombe'),
-(2, 'Kicukiro'), (2, 'Kigarama'), (2, 'Masaka'), (2, 'Niboye'), (2, 'Nyarugunga');
-
--- Insert Sectors for Nyarugenge District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(3, 'Gitega'), (3, 'Kanyinya'), (3, 'Kigali'), (3, 'Kimisagara'), (3, 'Mageragere'),
-(3, 'Muhima'), (3, 'Nyakabanda'), (3, 'Nyamirambo'), (3, 'Nyarugenge'), (3, 'Rwezamenyo');
-
--- Insert Sectors for Bugesera District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(4, 'Gashora'), (4, 'Juru'), (4, 'Kamabuye'), (4, 'Mareba'), (4, 'Mayange'),
-(4, 'Musenyi'), (4, 'Mwogo'), (4, 'Ngeruka'), (4, 'Ntarama'), (4, 'Nyamata'),
-(4, 'Nyarugenge'), (4, 'Rilima'), (4, 'Ruhuha'), (4, 'Rweru'), (4, 'Shyara');
-
--- Insert Sectors for Gatsibo District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(5, 'Gasange'), (5, 'Gatsibo'), (5, 'Gitoki'), (5, 'Kabarore'), (5, 'Kageyo'),
-(5, 'Kiramuruzi'), (5, 'Kiziguro'), (5, 'Muhura'), (5, 'Murambi'), (5, 'Ngarama'),
-(5, 'Nyagihanga'), (5, 'Remera'), (5, 'Rugarama'), (5, 'Rwimbogo');
-
--- Insert Sectors for Kayonza District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(6, 'Gahini'), (6, 'Kabare'), (6, 'Kabarondo'), (6, 'Mukarange'), (6, 'Murama'),
-(6, 'Murundi'), (6, 'Mwiri'), (6, 'Ndego'), (6, 'Nyamirama'), (6, 'Rukara'),
-(6, 'Ruramira'), (6, 'Rwinkwavu');
-
--- Insert Sectors for Kirehe District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(7, 'Gahara'), (7, 'Gatore'), (7, 'Kigarama'), (7, 'Kigina'), (7, 'Kirehe'),
-(7, 'Mahama'), (7, 'Mpanga'), (7, 'Musaza'), (7, 'Mushikiri'), (7, 'Nasho'),
-(7, 'Nyamugari'), (7, 'Nyarubuye');
-
--- Insert Sectors for Ngoma District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(8, 'Gashanda'), (8, 'Jarama'), (8, 'Karembo'), (8, 'Kazo'), (8, 'Kibungo'),
-(8, 'Mugesera'), (8, 'Murama'), (8, 'Mutenderi'), (8, 'Remera'), (8, 'Rukira'),
-(8, 'Rukumberi'), (8, 'Rurenge'), (8, 'Sake'), (8, 'Zaza');
-
--- Insert Sectors for Nyagatare District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(9, 'Gatunda'), (9, 'Karama'), (9, 'Karangazi'), (9, 'Katabagemu'), (9, 'Kiyombe'),
-(9, 'Matimba'), (9, 'Mimuri'), (9, 'Mukama'), (9, 'Musheli'), (9, 'Nyagatare'),
-(9, 'Rukomo'), (9, 'Rwempasha'), (9, 'Rwimiyaga'), (9, 'Tabagwe');
-
--- Insert Sectors for Rwamagana District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(10, 'Fumbwe'), (10, 'Gahengeri'), (10, 'Gishari'), (10, 'Karenge'), (10, 'Kigabiro'),
-(10, 'Muhazi'), (10, 'Munyaga'), (10, 'Munyiginya'), (10, 'Musha'), (10, 'Muyumbu'),
-(10, 'Mwulire'), (10, 'Nyakaliro'), (10, 'Nzige'), (10, 'Rubona');
-
--- Insert Sectors for Musanze District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(14, 'Busogo'), (14, 'Cyuve'), (14, 'Gacaca'), (14, 'Gashaki'), (14, 'Gataraga'),
-(14, 'Kimonyi'), (14, 'Kinigi'), (14, 'Muhoza'), (14, 'Muko'), (14, 'Musanze'),
-(14, 'Nkotsi'), (14, 'Nyange'), (14, 'Remera'), (14, 'Rwaza'), (14, 'Shingiro');
-
--- Insert Sectors for Huye District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(17, 'Gishamvu'), (17, 'Huye'), (17, 'Karama'), (17, 'Kigoma'), (17, 'Kinazi'),
-(17, 'Maraba'), (17, 'Mbazi'), (17, 'Mukura'), (17, 'Ngoma'), (17, 'Ruhashya'),
-(17, 'Rusatira'), (17, 'Rwaniro'), (17, 'Simbi'), (17, 'Tumba');
-
--- Insert Sectors for Rubavu District
-INSERT INTO rwanda_sectors (district_id, name) VALUES
-(27, 'Bugeshi'), (27, 'Busasamana'), (27, 'Cyanzarwe'), (27, 'Gisenyi'), (27, 'Kanama'),
-(27, 'Kanzenze'), (27, 'Mudende'), (27, 'Nyakiliba'), (27, 'Nyamyumba'), (27, 'Nyundo'),
-(27, 'Rubavu'), (27, 'Rugerero');
-
--- Create indexes for better performance
-CREATE INDEX idx_districts_province ON rwanda_districts(province_id);
-CREATE INDEX idx_sectors_district ON rwanda_sectors(district_id);
-CREATE INDEX idx_users_location ON users(province_id, district_id, sector_id);
-CREATE INDEX idx_products_location ON products(province_id, district_id, sector_id);
+echo "Migration completed successfully!\n";

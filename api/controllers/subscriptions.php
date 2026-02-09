@@ -36,7 +36,7 @@ try {
                 
             } elseif (isset($_GET['my_subscription'])) {
                 // Get user's current subscription
-                $user = \$auth->requireAuth();
+                $user = $auth->requireAuth();
                 if (!$user) {
                     throw new Exception('Authentication required');
                 }
@@ -71,7 +71,7 @@ try {
                 
             } elseif (isset($_GET['subscription_history'])) {
                 // Get subscription history
-                $user = \$auth->requireAuth();
+                $user = $auth->requireAuth();
                 if (!$user) {
                     throw new Exception('Authentication required');
                 }
@@ -94,7 +94,7 @@ try {
             
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
-            $user = \$auth->requireAuth();
+            $user = $auth->requireAuth();
             
             if (!$user) {
                 throw new Exception('Authentication required');
@@ -213,7 +213,7 @@ try {
             
         case 'PUT':
             $data = json_decode(file_get_contents("php://input"), true);
-            $user = \$auth->requireAuth();
+            $user = $auth->requireAuth();
             
             if (!$user) {
                 throw new Exception('Authentication required');

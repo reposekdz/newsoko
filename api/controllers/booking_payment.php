@@ -43,7 +43,7 @@ try {
             $data = json_decode(file_get_contents("php://input"), true);
             
             if (isset($data['action']) && $data['action'] === 'process_booking_payment') {
-                $user = \$auth->requireAuth();
+                $user = $auth->requireAuth();
                 if (!$user) throw new Exception('Unauthorized');
                 
                 $booking_id = $data['booking_id'];
@@ -172,7 +172,7 @@ try {
                 }
                 
             } elseif (isset($data['action']) && $data['action'] === 'release_escrow') {
-                $user = \$auth->requireAuth();
+                $user = $auth->requireAuth();
                 if (!$user) throw new Exception('Unauthorized');
                 
                 $booking_id = $data['booking_id'];

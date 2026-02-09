@@ -16,8 +16,8 @@ $db = $database->getConnection();
 $auth = new Auth($db);
 
 // Verify admin access
-$user = \$auth->requireAuth();
-if (!$user || !$user['is_admin']) {
+$user = $auth->requireAuth();
+if (!$user || empty($user['is_admin'])) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Admin access required']);
     exit;

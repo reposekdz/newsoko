@@ -28,7 +28,7 @@ try {
             
         case 'POST':
             $auth = new Auth($db);
-            \$user = \$auth->requireAuth();
+            $user = $auth->requireAuth();
             
             $data = json_decode(file_get_contents("php://input"), true);
             
