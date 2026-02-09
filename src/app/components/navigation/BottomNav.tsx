@@ -16,7 +16,7 @@ export function BottomNav({ activeTab, onTabChange, messageCount = 0 }: BottomNa
     { key: 'home', icon: Home, label: t('home') },
     { key: 'search', icon: Search, label: t('search') },
     { key: 'add', icon: PlusCircle, label: t('uploadProduct'), special: true },
-    { key: 'inbox', icon: MessageSquare, label: t('inbox'), badge: messageCount },
+    { key: 'dashboard', icon: MessageSquare, label: 'Dashboard' },
     { key: 'profile', icon: User, label: t('profile') },
   ];
 

@@ -1,24 +1,30 @@
 export interface Product {
-  id: string;
+  id: string | number;
   title: string;
   description: string;
   category: 'vehicles' | 'electronics' | 'clothing' | 'houses' | 'furniture' | 'tools' | 'others';
   images: string[];
   rentPrice?: number;
+  rent_price?: number;
   buyPrice?: number;
+  buy_price?: number;
   location: {
     address: string;
     lat: number;
     lng: number;
   };
   owner: User;
+  owner_id?: number;
   rating: number;
   reviewCount: number;
+  review_count?: number;
   availability: Date[];
   isAvailable: boolean;
+  is_available?: boolean;
   deposit?: number;
   features?: string[];
   condition?: 'new' | 'like-new' | 'good' | 'fair';
+  condition_status?: 'new' | 'like-new' | 'good' | 'fair';
 }
 
 export interface User {

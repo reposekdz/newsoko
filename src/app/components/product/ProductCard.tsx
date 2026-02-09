@@ -24,7 +24,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const { t } = useTranslation();
 
-  const price = viewMode === 'rent' ? product.rentPrice : product.buyPrice;
+  const price = viewMode === 'rent' ? (product.rentPrice || product.rent_price) : (product.buyPrice || product.buy_price);
   const priceLabel = viewMode === 'rent' ? t('rentPerDay') : t('buyPrice');
 
   if (!price) return null;
@@ -81,33 +81,39 @@ export function ProductCard({
         </h3>
 
         {/* Owner Info */}
-        <div className="flex items-center gap-2">
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={product.owner.avatar} />
-            <AvatarFallback>{product.owner.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm text-muted-foreground">{product.owner.name}</span>
-          {product.owner.isVerified && (
-            <BadgeCheck className="h-4 w-4 text-primary" />
-          )}
-        </div>
+        {product.owner && (
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={product.owner.avatar} />
+              <AvatarFallback>{product.owner.name?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-muted-foreground">{product.owner.name || 'User'}</span>
+            {product.owner.isVerified && (
+              <BadgeCheck className="h-4 w-4 text-primary" />
+            )}
+          </div>
+        )}
 
         {/* Location */}
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4" />
-          <span className="line-clamp-1">{product.location.address}</span>
-        </div>
+        {product.location && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4" />
+            <span className="line-clamp-1">{product.location.address || product.address || 'Kigali'}</span>
+          </div>
+        )}
 
         {/* Rating */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-bold">{product.rating.toFixed(1)}</span>
+        {product.rating && Number(product.rating) > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              <span className="font-bold">{Number(product.rating).toFixed(1)}</span>
+            </div>
+            <span className="text-sm text-muted-foreground">
+              ({product.reviewCount || product.review_count || 0} {t('reviews')})
+            </span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            ({product.reviewCount} {t('reviews')})
-          </span>
-        </div>
+        )}
 
         {/* Price */}
         <div className="pt-2">
@@ -123,12 +129,12 @@ export function ProductCard({
         </div>
       </CardContent>
 
-      <CardFooter className="p-4 pt-0 gap-2">
-        <Button variant="outline" size="sm" className="flex-1" onClick={onViewDetails}>
+      <CardFooter className="p-4 pt-0 flex-col gap-2">
+        <Button variant="outline" size="sm" className="w-full" onClick={onViewDetails}>
           <Eye className="h-4 w-4 mr-1" />
           {t('viewDetails')}
         </Button>
-        <Button size="sm" className="flex-1" onClick={onViewDetails}>
+        <Button size="sm" className="w-full" onClick={onViewDetails}>
           <Calendar className="h-4 w-4 mr-1" />
           {viewMode === 'rent' ? t('bookNow') : t('buy')}
         </Button>

@@ -1,6 +1,8 @@
-import { Upload, X, DollarSign, MapPin, Info, CheckCircle2 } from 'lucide-react';
-import { useState } from 'react';
+import { Upload, X, DollarSign, MapPin, Info, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../../context/AuthContext';
+import { api } from '../../../services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -12,7 +14,10 @@ import { toast } from 'sonner';
 
 export function AddListingPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
+  const [verificationStatus, setVerificationStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [images, setImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: '',
@@ -25,6 +30,25 @@ export function AddListingPage() {
     location: '',
     features: '',
   });
+
+  useEffect(() => {
+    checkVerification();
+  }, [user]);
+
+  const checkVerification = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const result = await api.getUserVerificationStatus();
+      setVerificationStatus(result.data);
+    } catch (error) {
+      console.error('Failed to check verification:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Mock image upload
@@ -39,10 +63,25 @@ export function AddListingPage() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
-    toast.success('Ikintu cyawe cyashyizweho neza!', {
-      description: 'Kizajya kibonekana mu saa imwe',
-    });
+  const handleSubmit = async () => {
+    try {
+      const result = await api.createProductWithApproval({
+        ...formData,
+        images: images,
+      });
+      
+      if (result.success) {
+        toast.success('Ikintu cyawe cyashyizweho neza!', {
+          description: 'Kizajya kibonekana nyuma yo kwemezwa',
+        });
+      } else {
+        toast.error(result.message || 'Failed to create product');
+        return;
+      }
+    } catch (error) {
+      toast.error('Error creating product');
+      return;
+    }
     // Reset form
     setFormData({
       title: '',
@@ -58,6 +97,67 @@ export function AddListingPage() {
     setImages([]);
     setStep(1);
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-3xl flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-3xl">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <AlertCircle className="h-16 w-16 text-yellow-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold mb-2">Injira cyangwa Iyandikishe</h3>
+              <p className="text-muted-foreground mb-6">
+                Ugomba kuba ufite konti kugira ngo ushyireho ikintu
+              </p>
+              <Button onClick={() => window.location.reload()}>Injira</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!user?.is_verified && verificationStatus?.status !== 'approved') {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-3xl">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <ShieldCheck className="h-16 w-16 text-yellow-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold mb-2">Kwemeza Umucuruzi</h3>
+              <p className="text-muted-foreground mb-6">
+                Ugomba kwemezwa nk'umucuruzi mbere yo gushyiraho ibicuruzwa.
+                Ibi bifasha kurinda abakiriya no gukora isoko ryizewe.
+              </p>
+              <div className="bg-secondary/30 p-4 rounded-lg mb-6 text-left max-w-md mx-auto">
+                <p className="font-bold mb-2">Ibisabwa:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  <li>Indangamuntu (ID) cyangwa Pasiporo</li>
+                  <li>Nimero ya telefoni ikora</li>
+                  <li>Aderesi y'aho utuye</li>
+                  <li>Kwishyura ingwate ya 50,000 RWF (izasubizwa)</li>
+                </ul>
+              </div>
+              <Button onClick={() => window.location.href = '#seller-verification'}>
+                Tangira Kwemezwa
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
